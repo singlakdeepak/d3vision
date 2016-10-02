@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+
+<style>
+
+.node {     
+  stroke: #555;
+  stroke-width: 1.5px;
+}
+.node text {
+  font: 25px helvetica;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+#legend_div {
+  text-align: center;
+  width: 320px;
+}
+
+.legend-marker {
+  display: inline-block;
+  padding: 16px 4px 8px 4px;
+}
+
+.legend-marker-color {
+  display: inline-block;
+  height: 12px;
+  width: 12px;
+}
+
+.legend rect {
+  fill:white;
+  stroke:black;
+  opacity:1;}
+    
+
+</style>
+
+
+
+
+ 
+<body>
+<section id ="main">
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var nominal_base_node_size = 8;
+var nominal_text_size = 10;
+
+
+var width = 1200,//960 initially
+    height = 700;
+var linkedByIndex = {};
+var color = d3.scale.category20();
+
+var lobes= ["Occipital", "Temporal","Parietal","Frontal"];
+
+var force = d3.layout.force()
+    .charge(-120)
+    .size([width, height]);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+d3.json("VisualMap.json", function(error, graph) {
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+			.linkDistance(function(d) {return d.value*50;} )
+      .start();
+
+  var link = svg.selectAll(".link")
+      .data(graph.links)
+			.enter().append("line")
+      .attr("class", "link")
+      .style("stroke-width", function(d) { return Math.sqrt(1); });
+      
+  var node = svg.selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("circle")
+      .attr("class", "node")
+			.attr("r", function(d) { return (d.size*5); })
+  //    .attr("data-legend",function(d) { return d.name;})
+      .style("fill", function(d) { return color(d.group); })
+      .on("mouseover", mouseover)
+      .on("mouseout", mouseout)
+      .call(force.drag);
+
+        graph.links.forEach(function(d) {
+          linkedByIndex[d.source.index + "," + d.target.index] = 1;
+         // linkedByIndex[d.target.index + "," + d.source.index] = 1;
+        });
+
+        function neighboring(a, b) {
+      return a.index == b.index || linkedByIndex[a.index + "," + b.index] ;
+    }
+    
+    function mouseover(d) {
+      d3.selectAll(".link").transition().duration(500)
+        .style("opacity", function(o) {
+        return o.source === d  ? 1 : 0;
+      });
+      
+      d3.selectAll(".node").transition().duration(500)
+        .style("opacity", function(o) {
+           return neighboring(d, o) ? 1 : 0;
+        });
+}
+
+function mouseout() {
+  d3.selectAll(".link").transition().duration(500)
+        .style("opacity", 1);
+  d3.selectAll(".node").transition().duration(500)
+        .style("opacity", 1);
+}
+
+
+      node.append("title")
+   //   .attr("dx", function(d){return -20})
+      .style('fill', 'black')
+      .text(function(d){return d.name})
+
+
+    var path = svg.append("svg:g").selectAll("path")
+    .data(force.links())
+    .enter().append("svg:path")
+    .attr("marker-end",function (d) { return 1; });
+
+
+node.append("text")
+      .attr("dx", 50)
+      .attr("dy", ".35em")
+      .text(function(d) { return d.name })
+      .style("stroke", "gray");
+//Now we are giving the SVGs co-ordinates - the force layout is generating the co-ordinates which this code is using to update the attributes of the SVG elements
+force.on("tick", function () {
+    link.attr("x1", function (d) {
+        return d.source.x;
+    })
+        .attr("y1", function (d) {
+        return d.source.y;
+    })
+        .attr("x2", function (d) {
+        return d.target.x;
+    })
+        .attr("y2", function (d) {
+        return d.target.y;
+    });
+    d3.selectAll("circle").attr("cx", function (d) {
+        return d.x;
+    })
+        .attr("cy", function (d) {
+        return d.y;
+    });
+    d3.selectAll("text").attr("x", function (d) {
+        return d.x;
+    })
+        .attr("y", function (d) {
+        return d.y;
+    });
+});
+
+var legend = svg.selectAll(".legend")
+    .data(color.domain())
+    .enter().append("g")
+    .attr("class", "legend")
+    .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+legend.append("rect")
+    .attr("x", width - 18)
+    .attr("width", 18)
+    .attr("height", 18)
+    .style("fill", color);
+
+
+
+legend.append("text")
+    .attr("x", width - 24)
+    .attr("y", 9)
+    .attr("dy", ".35em")
+    .style('fill', 'black')
+    .style("text-anchor", "end")
+    .text(function(d) { return lobes[d-1]; });
+
+});
+
+</script>
+</section>
+  </body>
+</html>
